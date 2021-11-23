@@ -1,10 +1,7 @@
----
-title: "Food Insecurity in Oregon 2020"
-subtitle: "A case study in factors that affect food insecurity"
-author: "Westley Winks"
-date: "11/21/2021"
-output: rmarkdown::github_document
----
+Food Insecurity in Oregon 2020
+================
+Westley Winks
+11/21/2021
 
 # Step 1: Ask
 
@@ -13,14 +10,17 @@ output: rmarkdown::github_document
 -   Where are food insecure people in Oregon?
 -   What is a general profile for a food insecure person in Oregon?
 
-TODO: define food insecure, maybe define the business scenario (State of Oregon figuring out where to put food resources)
+TODO: define food insecure, maybe define the business scenario (State of
+Oregon figuring out where to put food resources)
 
 # Step 2: Prepare
 
-Where is data coming from?\
+Where is data coming from?  
 - CPS, Current Population Survey
 
-TODO: further define where the data comes from, how it is collected, what is in it, "Where is this data from and what does it cover?", limitations
+TODO: further define where the data comes from, how it is collected,
+what is in it, “Where is this data from and what does it cover?”,
+limitations
 
 Factors to be used will include:
 
@@ -30,7 +30,8 @@ Factors to be used will include:
 -   HRFS12M1 = Food insecurity status, last 12 months
 -   HRFS30D1 = Food insecurity status, last 30 days
 -   GESTFIPS = Geographic FIPS code (Oregon is 41)
--   HRPOOR = Above or below 185% poverty level, determined from family income
+-   HRPOOR = Above or below 185% poverty level, determined from family
+    income
 -   HRNUMHOU = Household size
 -   HRHTYPE = Household type
 -   GTMETSTA = Metro status
@@ -42,21 +43,32 @@ Factors to be used will include:
 -   PRCITSHP = Citizenship status
 -   PEMJOT = Do you have more than one job?
 -   PEHRUSLT = How many hours per week do you work each week?
--   HRSUPINT = Whether or not they were interviewed for food security supplement survey
+-   HRSUPINT = Whether or not they were interviewed for food security
+    supplement survey
 -   PRTAGE = Age
 
 # Step 3: Process
 
-In the full data set for 2020, there are 132,036 observations across 507 variables. There are major entities (ERS, USDA) that use all of this data to get important stats and summaries of the nation. For simplicity, I only want to pull out specific ones that will help answer the business task described above. The selected variables are listed above. I am also choosing to just look at responses from Oregon. I also want to put in more meaningful variable names and definitions.
+In the full data set for 2020, there are 132,036 observations across 507
+variables. There are major entities (ERS, USDA) that use all of this
+data to get important stats and summaries of the nation. For simplicity,
+I only want to pull out specific ones that will help answer the business
+task described above. The selected variables are listed above. I am also
+choosing to just look at responses from Oregon. I also want to put in
+more meaningful variable names and definitions.
 
-```{r libraries, message=FALSE}
+``` r
 library(tidyverse)
 library(janitor)
 ```
 
-To clean the data, I first filtered the data. I `select`ed the variables above. I also `filter`ed based on my critera of only looking at Oregon and since I am interested in looking at food insecurity, I filtered out people who didn't complete the supplemental food security interview. I also filtered out people who only partially completed the survey.
+To clean the data, I first filtered the data. I `select`ed the variables
+above. I also `filter`ed based on my critera of only looking at Oregon
+and since I am interested in looking at food insecurity, I filtered out
+people who didn’t complete the supplemental food security interview. I
+also filtered out people who only partially completed the survey.
 
-```{r read select and filter data}
+``` r
 df <- read.csv("dec20pub.csv") %>% 
   select(HUFINAL, HRFS12M1, HRFS30D1, GESTFIPS, HRPOOR, HRNUMHOU, HRHTYPE, 
          GTMETSTA, PEMARITL, PESEX, PEAFEVER, PEEDUCA, PEMLR, PTDTRACE, 
@@ -66,9 +78,13 @@ df <- read.csv("dec20pub.csv") %>%
   filter(HUFINAL %in% c(1, 201)) # fully completed survey
 ```
 
-Second, I decoded all of the variables using a series of `case_when`'s. The responses are recorded as numbers and what they represent is in a helper document (data-definitions.pdf). I also grouped similar levels together to reduce granularity. In the process, I renamed the variables to more meaningful names.
+Second, I decoded all of the variables using a series of `case_when`’s.
+The responses are recorded as numbers and what they represent is in a
+helper document (data-definitions.pdf). I also grouped similar levels
+together to reduce granularity. In the process, I renamed the variables
+to more meaningful names.
 
-```{r decoding data and renaming}
+``` r
 df_2 <- df %>% 
   mutate(food_insec_12mo = case_when(
     HRFS12M1 == 1 ~ "Food Secure",
@@ -184,30 +200,51 @@ clean_df <- select(df_2, -starts_with(LETTERS, ignore.case = FALSE))
 glimpse(clean_df)
 ```
 
-Cleaning summary: 
-- Selected variables of interest
-- Filtered to keep people in Oregon that fully completed the main survey and completed the food security survey
-- Decoded the data using definitions described in the data definitions document
-- Grouped the two levels of food insecurity (very low and low) into one (Food Insecure)
-- Grouped education levels that were less than completing high school into one group
-- Grouped people with 3 or more races into one group
-- Grouped citizenship status of native into one group regardless of where they were born
-- Renamed variables
+    ## Rows: 1,574
+    ## Columns: 17
+    ## $ food_insec_12mo     <chr> "Food Secure", "Food Secure", "Food Secure", "Food…
+    ## $ food_insec_30d      <chr> "Food Secure", "Food Secure", "Food Secure", "Food…
+    ## $ pov_level           <chr> "Above 185% Poverty or Income Not Reported", "Abov…
+    ## $ num_in_house        <int> 1, 2, 2, 4, 4, 4, 4, 2, 2, 2, 2, 2, 2, 1, 3, 3, 3,…
+    ## $ house_type          <chr> "Female Individual", "Single Mother Family", "Sing…
+    ## $ met_status          <chr> "Metropolitan", "Metropolitan", "Metropolitan", "M…
+    ## $ marital_status      <chr> "Never Married", "Separated", "Younger than 15", "…
+    ## $ sex                 <chr> "Female", "Female", "Male", "Female", "Male", "Mal…
+    ## $ active_duty         <chr> "Didn't Serve on Active Duty", "Didn't Serve on Ac…
+    ## $ edu_level           <chr> "Master's", "Master's", "Child", "Associate's, voc…
+    ## $ race                <chr> "White Only", "White Only", "3 or more races", "Wh…
+    ## $ citizenship_status  <chr> "Native", "Native", "Native", "Native", "Native", …
+    ## $ more_than_one_job   <chr> "1 Job", "More than 1 job", "Unemployed", "1 Job",…
+    ## $ hrs_worked_per_week <chr> "50", "63", "Unemployed", "20", "Unemployed", "Une…
+    ## $ num_children        <chr> "Children Older than 18", "1", "Children Older tha…
+    ## $ age                 <int> 63, 44, 12, 75, 79, 50, 31, 76, 72, 46, 21, 62, 55…
+    ## $ emp_status          <chr> "Employed", "Employed", "Child or Military", "Empl…
+
+Cleaning summary: - Selected variables of interest - Filtered to keep
+people in Oregon that fully completed the main survey and completed the
+food security survey - Decoded the data using definitions described in
+the data definitions document - Grouped the two levels of food
+insecurity (very low and low) into one (Food Insecure) - Grouped
+education levels that were less than completing high school into one
+group - Grouped people with 3 or more races into one group - Grouped
+citizenship status of native into one group regardless of where they
+were born - Renamed variables
 
 # Step 4: Analyze
 
 ## What was the food insecurity rate in Oregon in 2020?
 
-First, let's look at the food insecurity rate in Oregon last year. This will be done by summarizing the data to determine how many (as a percentage) of the respondents were food insecure at some point in 2020.
+First, let’s look at the food insecurity rate in Oregon last year. This
+will be done by summarizing the data to determine how many (as a
+percentage) of the respondents were food insecure at some point in 2020.
 
-```{r}
+``` r
 food_insec_rate_12mo <- clean_df %>% 
   count(food_insec_12mo, name = "count") %>% 
   mutate(rate = count/sum(count))
 ```
 
-
-```{r}
+``` r
 # ggplot(data = food_insec_rate_12mo, 
 #        mapping = aes(x = "", 
 #                      y = freq, 
@@ -224,26 +261,23 @@ food_insec_rate_12mo <- clean_df %>%
 #        subtitle = "What percentage of people struggle to find their next meal?")
 ```
 
-```{r}
+``` r
 # clean_df %>%
 #   count(food_insec_12mo, name = "count") %>%
 #   mutate(rate = count/sum(count)) %>%
 #     ggplot(mapping = aes(x = fct_reorder(food_insec_12m, rate), y = rate)) +
 #     geom_col()
-
 ```
 
-
-From this data, the food insecurity rate in Oregon 2020 was about **9%** Looking at data from [Feeding America](https://map.feedingamerica.org/county/2019/overall), the food insecurity rate in Oregon was 11.5% in 2019. While the two values are close, the discrepancy is likely due to Feeding America reporting results from a model they developed based many years of CPS data. COVID-19 also heavily impacted food insecurity in 2020 and this could be the cause of an increase in food insecurity in 2020.
+From this data, the food insecurity rate in Oregon 2020 was about **9%**
+Looking at data from [Feeding
+America](https://map.feedingamerica.org/county/2019/overall), the food
+insecurity rate in Oregon was 11.5% in 2019. While the two values are
+close, the discrepancy is likely due to Feeding America reporting
+results from a model they developed based many years of CPS data.
+COVID-19 also heavily impacted food insecurity in 2020 and this could be
+the cause of an increase in food insecurity in 2020.
 
 ## What types of people are most food insecure?
 
 ### How much do food insecure people work?
-
-```{r}
-
-```
-
-```{r}
-
-```
