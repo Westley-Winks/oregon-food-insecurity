@@ -3,39 +3,81 @@ Food Insecurity in Oregon 2020
 Westley Winks
 11/21/2021
 
--   [Step 1: Ask](#step-1-ask)
--   [Step 2: Prepare](#step-2-prepare)
--   [Step 3: Process](#step-3-process)
--   [Step 4: Analyze](#step-4-analyze)
+-   [Ask](#ask)
+-   [Prepare](#prepare)
+    -   [Factors to consider](#factors-to-consider)
+-   [Process](#process)
+-   [Analyze](#analyze)
     -   [What was the food insecurity rate in Oregon in
         2020?](#what-was-the-food-insecurity-rate-in-oregon-in-2020)
     -   [What types of people are most food
         insecure?](#what-types-of-people-are-most-food-insecure)
+        -   [How much do food insecure people
+            work?](#how-much-do-food-insecure-people-work)
+        -   [Do different races experience more food
+            insecurity?](#do-different-races-experience-more-food-insecurity)
+        -   [More analysis](#more-analysis)
+-   [Share](#share)
+-   [Act](#act)
 
-# Step 1: Ask
+Note: This project is serving two purposes. First, it is a personal
+project that I have been interested in that will support my portfolio
+for the work that I want to do. Second, this is my chosen capstone
+project for a Google Data Analytics course I am taking.
 
--   What is the food insecurity rate in Oregon in 2020?
--   What types of households are most food insecure in Oregon?
--   Where are food insecure people in Oregon?
--   What is a general profile for a food insecure person in Oregon?
+# Ask
 
-TODO: define food insecure, maybe define the business scenario (State of
-Oregon figuring out where to put food resources)
+I work tangentially for a non-profit in my area that raises cattle,
+butchers them, and gives the beef away to food banks in 3 different
+states to alleviate some food insecurity in the world. I understand the
+mission and the vision of the organization but I got to thinking: How
+big of an issue is food insecurity? How much bigger does this
+organization need to get to feed everyone so no one has to wonder where
+their next meal is coming from?
 
-# Step 2: Prepare
+Food insecurity has many definitions but I like Feeding America’s
+definition: “food insecurity refers to a lack of available financial
+resources for food at the household level.” This is the definition that
+I have in mind throughout this analysis. Other definitions include:  
+- USDA: “a lack of consistent access to enough food for an active,
+healthy life”  
+- healthypeople.gov: “the disruption of food intake or eating patterns
+because of lack of money and other resources”
 
-Where is data coming from?  
-- CPS, Current Population Survey
+While there are major organizations that use food insecurity data to do
+good (much better than I can), I hope my analysis does some good as
+well. I want to help my local community and state where I have lived my
+entire life. For these reasons, I am restricting my analysis to just
+Oregon in 2020. As new data comes in, I will analyze and compare to keep
+it relevant and (hopefully) useful for local non-profits and good
+Samaritans.
 
-TODO: further define where the data comes from, how it is collected,
-what is in it, “Where is this data from and what does it cover?”,
-limitations, converting from csv to parquet
+As a basis for the project, I am attempting to answer the following:  
+- What is the food insecurity rate in Oregon in 2020?  
+- What types of households are most food insecure in Oregon?  
+- Where are food insecure people in Oregon?  
+- What is a general profile for a food insecure person in Oregon?
 
-Factors to be used will include:
+# Prepare
 
-### VARIABLES
+Data for this project is coming from the Current Population Survey
+(CPS). The United States Census Bureau surveys 54,000 households each
+month to get a clear picture of the labor force in the United States.
+Every December, they also administer a supplemental food security
+survey. This extends the picture to get an even better idea of the
+health and wellness of the nation. The full technical appendix is in
+this repository as “cps20pub.pdf”.
 
--   HUFINAL = Final outcome of interview (completed or not)
+In the full data set for 2020, there are 132,036 observations across 507
+variables. There are major entities (ERS, USDA, Feeding America) that
+use all of this data to get important stats and summaries of the nation.
+It also includes entries for households that were not interviewed or
+otherwise unable to complete the survey. For simplicity, I want to only
+look at certain factors that I think will be the most interesting.
+
+## Factors to consider
+
+-   HRINTSTA = Interview status of household
 -   HRFS12M1 = Food insecurity status, last 12 months
 -   HRFS30D1 = Food insecurity status, last 30 days
 -   GESTFIPS = Geographic FIPS code (Oregon is 41)
@@ -56,20 +98,29 @@ Factors to be used will include:
     supplement survey
 -   PRTAGE = Age
 
-# Step 3: Process
+# Process
 
-In the full data set for 2020, there are 132,036 observations across 507
-variables. There are major entities (ERS, USDA) that use all of this
-data to get important stats and summaries of the nation. For simplicity,
-I only want to pull out specific ones that will help answer the business
-task described above. The selected variables are listed above. I am also
-choosing to just look at responses from Oregon. I also want to put in
-more meaningful variable names and definitions.
+I first downloaded the data directly from the Census Bureau
+[here](https://www.census.gov/data/datasets/time-series/demo/cps/cps-supp_cps-repwgt/cps-food-security.html).
+It is also compressed in this repository under “dec20pub.zip”. This
+comes as a large 182 MB `.csv` file. Since I don’t particularly like
+this file format or the space it takes up, I converted it to a
+`.parquet` file which is smaller (same data at 21.6 MB) and reads faster
+than `.csv`.
+
+``` r
+# library(arrow)
+# write_parquet(read_csv("dec20pub.csv"), "dec20pub.parquet")
+```
+
+For simplicity, I only want to pull out specific ones that will help
+answer the questions described above. The selected variables are listed
+above. I am also choosing to just look at responses from Oregon. I also
+want to put in more meaningful variable names and definitions.
 
 ``` r
 library(tidyverse)
 library(janitor)
-library(RColorBrewer)
 library(arrow)
 ```
 
@@ -81,12 +132,12 @@ also filtered out people who only partially completed the survey.
 
 ``` r
 df <- read_parquet("dec20pub.parquet") %>%
-  select(HUFINAL, HRFS12M1, HRFS30D1, GESTFIPS, HRPOOR, HRNUMHOU, HRHTYPE, 
+  select(HRINTSTA, HRFS12M1, HRFS30D1, GESTFIPS, HRPOOR, HRNUMHOU, HRHTYPE, 
          GTMETSTA, PEMARITL, PESEX, PEAFEVER, PEEDUCA, PEMLR, PTDTRACE, 
          PRCITSHP, PEMJOT, PEHRUSLT, PRNMCHLD, HRSUPINT, PRTAGE) %>% 
   filter(GESTFIPS == 41) %>% # in Oregon
   filter(HRSUPINT == 1) %>% # interviewed for food security
-  filter(HUFINAL %in% c(1, 201)) # fully completed survey
+  filter(HRINTSTA == 1) # interviewed for basic CPS
 ```
 
 Second, I decoded all of the variables using a series of `case_when`’s.
@@ -231,17 +282,22 @@ glimpse(clean_df)
     ## $ age                 <dbl> 63, 44, 12, 75, 79, 50, 31, 76, 72, 46, 21, 62, 55…
     ## $ emp_status          <chr> "Employed", "Employed", "Child or Military", "Empl…
 
-Cleaning summary: - Selected variables of interest - Filtered to keep
-people in Oregon that fully completed the main survey and completed the
-food security survey - Decoded the data using definitions described in
-the data definitions document - Grouped the two levels of food
-insecurity (very low and low) into one (Food Insecure) - Grouped
-education levels that were less than completing high school into one
-group - Grouped people with 3 or more races into one group - Grouped
-citizenship status of native into one group regardless of where they
-were born - Renamed variables
+Cleaning summary:  
+- Selected variables of interest  
+- Filtered to keep people in Oregon that fully completed the main survey
+and completed the food security survey  
+- Decoded the data using definitions described in the data definitions
+document  
+- Grouped the two levels of food insecurity (very low and low) into one
+(Food Insecure)  
+- Grouped education levels that were less than completing high school
+into one group  
+- Grouped people with 3 or more races into one group  
+- Grouped citizenship status of native into one group regardless of
+where they were born  
+- Renamed variables
 
-# Step 4: Analyze
+# Analyze
 
 ## What was the food insecurity rate in Oregon in 2020?
 
@@ -272,7 +328,7 @@ ggplot(data = x,
        y = "Count")
 ```
 
-![](oregon-food-insecurity_files/figure-gfm/unnamed-chunk-2-1.png)<!-- -->
+![](oregon-food-insecurity_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
 
 From this data, the food insecurity rate in Oregon 2020 was about **9%**
 Looking at data from [Feeding
@@ -280,12 +336,12 @@ America](https://map.feedingamerica.org/county/2019/overall), the food
 insecurity rate in Oregon was 11.5% in 2019. While the two values are
 close, the discrepancy is likely due to Feeding America reporting
 results from a model they developed based many years of CPS data.
-COVID-19 also heavily impacted food insecurity in 2020 and this could be
-the cause of an increase in food insecurity in 2020.
 
 ## What types of people are most food insecure?
 
 ### How much do food insecure people work?
+
+Coming soon
 
 ### Do different races experience more food insecurity?
 
@@ -341,6 +397,17 @@ clean_df %>%
        y = "Count")
 ```
 
-    ## `summarise()` has grouped output by 'race_lumped'. You can override using the `.groups` argument.
-
 ![](oregon-food-insecurity_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
+
+### More analysis
+
+Coming soon
+
+# Share
+
+Coming soon (conclusions, answers, etc.)
+
+# Act
+
+Coming soon (recommendations for businesses and non-profits operating in
+this space)

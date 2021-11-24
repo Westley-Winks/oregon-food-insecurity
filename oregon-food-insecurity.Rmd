@@ -6,30 +6,34 @@ date: "11/21/2021"
 output:
   github_document:
     toc: true
-    toc_depth: 2
+    toc_depth: 3
 ---
+Note: This project is serving two purposes. First, it is a personal project that I have been interested in that will support my portfolio for the work that I want to do. Second, this is my chosen capstone project for a Google Data Analytics course I am taking.
 
-# Step 1: Ask
+# Ask
 
--   What is the food insecurity rate in Oregon in 2020?
--   What types of households are most food insecure in Oregon?
--   Where are food insecure people in Oregon?
--   What is a general profile for a food insecure person in Oregon?
+I work tangentially for a non-profit in my area that raises cattle, butchers them, and gives the beef away to food banks in 3 different states to alleviate some food insecurity in the world. I understand the mission and the vision of the organization but I got to thinking: How big of an issue is food insecurity? How much bigger does this organization need to get to feed everyone so no one has to wonder where their next meal is coming from?
 
-TODO: define food insecure, maybe define the business scenario (State of Oregon figuring out where to put food resources)
+Food insecurity has many definitions but I like Feeding America's definition: "food insecurity refers to a lack of available financial resources for food at the household level." This is the definition that I have in mind throughout this analysis. Other definitions include:  
+-   USDA: "a lack of consistent access to enough food for an active, healthy life"  
+-   healthypeople.gov: "the disruption of food intake or eating patterns because of lack of money and other resources"  
 
-# Step 2: Prepare
+While there are major organizations that use food insecurity data to do good (much better than I can), I hope my analysis does some good as well. I want to help my local community and state where I have lived my entire life. For these reasons, I am restricting my analysis to just Oregon in 2020. As new data comes in, I will analyze and compare to keep it relevant and (hopefully) useful for local non-profits and good Samaritans. 
 
-Where is data coming from?\
-- CPS, Current Population Survey
+As a basis for the project, I am attempting to answer the following:  
+-   What is the food insecurity rate in Oregon in 2020?  
+-   What types of households are most food insecure in Oregon?  
+-   Where are food insecure people in Oregon?  
+-   What is a general profile for a food insecure person in Oregon?  
 
-TODO: further define where the data comes from, how it is collected, what is in it, "Where is this data from and what does it cover?", limitations, converting from csv to parquet
+# Prepare
 
-Factors to be used will include:
+Data for this project is coming from the Current Population Survey (CPS). The United States Census Bureau surveys 54,000 households each month to get a clear picture of the labor force in the United States. Every December, they also administer a supplemental food security survey. This extends the picture to get an even better idea of the health and wellness of the nation. The full technical appendix is in this repository as "cps20pub.pdf".
 
-### VARIABLES
+In the full data set for 2020, there are 132,036 observations across 507 variables. There are major entities (ERS, USDA, Feeding America) that use all of this data to get important stats and summaries of the nation. It also includes entries for households that were not interviewed or otherwise unable to complete the survey. For simplicity, I want to only look at certain factors that I think will be the most interesting. 
 
--   HUFINAL = Final outcome of interview (completed or not)
+## Factors to consider
+-   HRINTSTA = Interview status of household
 -   HRFS12M1 = Food insecurity status, last 12 months
 -   HRFS30D1 = Food insecurity status, last 30 days
 -   GESTFIPS = Geographic FIPS code (Oregon is 41)
@@ -48,14 +52,19 @@ Factors to be used will include:
 -   HRSUPINT = Whether or not they were interviewed for food security supplement survey
 -   PRTAGE = Age
 
-# Step 3: Process
+# Process
+I first downloaded the data directly from the Census Bureau [here](https://www.census.gov/data/datasets/time-series/demo/cps/cps-supp_cps-repwgt/cps-food-security.html). It is also compressed in this repository under "dec20pub.zip". This comes as a large 182 MB `.csv` file. Since I don't particularly like this file format or the space it takes up, I converted it to a `.parquet` file which is smaller (same data at 21.6 MB) and reads faster than `.csv`.
 
-In the full data set for 2020, there are 132,036 observations across 507 variables. There are major entities (ERS, USDA) that use all of this data to get important stats and summaries of the nation. For simplicity, I only want to pull out specific ones that will help answer the business task described above. The selected variables are listed above. I am also choosing to just look at responses from Oregon. I also want to put in more meaningful variable names and definitions.
+```{r eval = FALSE}
+# library(arrow)
+# write_parquet(read_csv("dec20pub.csv"), "dec20pub.parquet")
+```
+
+For simplicity, I only want to pull out specific ones that will help answer the questions described above. The selected variables are listed above. I am also choosing to just look at responses from Oregon. I also want to put in more meaningful variable names and definitions.
 
 ```{r libraries, message=FALSE}
 library(tidyverse)
 library(janitor)
-library(RColorBrewer)
 library(arrow)
 ```
 
@@ -64,12 +73,12 @@ To clean the data, I first filtered the data. I `select`ed the variables above. 
 ```{r read select and filter data}
 
 df <- read_parquet("dec20pub.parquet") %>%
-  select(HUFINAL, HRFS12M1, HRFS30D1, GESTFIPS, HRPOOR, HRNUMHOU, HRHTYPE, 
+  select(HRINTSTA, HRFS12M1, HRFS30D1, GESTFIPS, HRPOOR, HRNUMHOU, HRHTYPE, 
          GTMETSTA, PEMARITL, PESEX, PEAFEVER, PEEDUCA, PEMLR, PTDTRACE, 
          PRCITSHP, PEMJOT, PEHRUSLT, PRNMCHLD, HRSUPINT, PRTAGE) %>% 
   filter(GESTFIPS == 41) %>% # in Oregon
   filter(HRSUPINT == 1) %>% # interviewed for food security
-  filter(HUFINAL %in% c(1, 201)) # fully completed survey
+  filter(HRINTSTA == 1) # interviewed for basic CPS
 ```
 
 Second, I decoded all of the variables using a series of `case_when`'s. The responses are recorded as numbers and what they represent is in a helper document (data-definitions.pdf). I also grouped similar levels together to reduce granularity. In the process, I renamed the variables to more meaningful names.
@@ -190,17 +199,17 @@ clean_df <- select(df_2, -starts_with(LETTERS, ignore.case = FALSE))
 glimpse(clean_df)
 ```
 
-Cleaning summary: 
-- Selected variables of interest
-- Filtered to keep people in Oregon that fully completed the main survey and completed the food security survey
-- Decoded the data using definitions described in the data definitions document
-- Grouped the two levels of food insecurity (very low and low) into one (Food Insecure)
-- Grouped education levels that were less than completing high school into one group
-- Grouped people with 3 or more races into one group
-- Grouped citizenship status of native into one group regardless of where they were born
-- Renamed variables
+Cleaning summary:  
+-   Selected variables of interest  
+-   Filtered to keep people in Oregon that fully completed the main survey and completed the food security survey  
+-   Decoded the data using definitions described in the data definitions document  
+-   Grouped the two levels of food insecurity (very low and low) into one (Food Insecure)  
+-   Grouped education levels that were less than completing high school into one group  
+-   Grouped people with 3 or more races into one group  
+-   Grouped citizenship status of native into one group regardless of where they were born  
+-   Renamed variables  
 
-# Step 4: Analyze
+# Analyze
 
 ## What was the food insecurity rate in Oregon in 2020?
 
@@ -229,16 +238,13 @@ ggplot(data = x,
        y = "Count")
 ```
 
-From this data, the food insecurity rate in Oregon 2020 was about **9%** Looking at data from [Feeding America](https://map.feedingamerica.org/county/2019/overall), the food insecurity rate in Oregon was 11.5% in 2019. While the two values are close, the discrepancy is likely due to Feeding America reporting results from a model they developed based many years of CPS data. COVID-19 also heavily impacted food insecurity in 2020 and this could be the cause of an increase in food insecurity in 2020.
+From this data, the food insecurity rate in Oregon 2020 was about **9%** Looking at data from [Feeding America](https://map.feedingamerica.org/county/2019/overall), the food insecurity rate in Oregon was 11.5% in 2019. While the two values are close, the discrepancy is likely due to Feeding America reporting results from a model they developed based many years of CPS data. 
 
 ## What types of people are most food insecure?
 
 ### How much do food insecure people work?
 
-```{r}
-
-```
-
+Coming soon
 
 ### Do different races experience more food insecurity?
 ```{r}
@@ -254,7 +260,7 @@ race_df %>%
 
 Looking at [data from census.gov for Oregon in 2019](https://www.census.gov/quickfacts/OR), this sample is well selected. The prevalence of each race in this dataset is roughly equivalent to the population estimates.
 
-```{r}
+```{r message = FALSE}
 clean_df %>%
   filter(food_insec_12mo != "No Response") %>% 
   mutate(race_lumped = fct_lump(f = race, n = 3)) %>% 
@@ -274,3 +280,11 @@ clean_df %>%
        y = "Count")
 ```
 
+### More analysis
+Coming soon
+
+# Share
+Coming soon (conclusions, answers, etc.)
+
+# Act
+Coming soon (recommendations for businesses and non-profits operating in this space)
