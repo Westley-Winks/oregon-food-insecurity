@@ -3,7 +3,10 @@ title: "Food Insecurity in Oregon 2020"
 subtitle: "A case study in factors that affect food insecurity"
 author: "Westley Winks"
 date: "11/21/2021"
-output: rmarkdown::github_document
+output:
+  github_document:
+    toc: true
+    toc_depth: 2
 ---
 
 # Step 1: Ask
@@ -20,7 +23,7 @@ TODO: define food insecure, maybe define the business scenario (State of Oregon 
 Where is data coming from?\
 - CPS, Current Population Survey
 
-TODO: further define where the data comes from, how it is collected, what is in it, "Where is this data from and what does it cover?", limitations
+TODO: further define where the data comes from, how it is collected, what is in it, "Where is this data from and what does it cover?", limitations, converting from csv to parquet
 
 Factors to be used will include:
 
@@ -52,12 +55,15 @@ In the full data set for 2020, there are 132,036 observations across 507 variabl
 ```{r libraries, message=FALSE}
 library(tidyverse)
 library(janitor)
+library(RColorBrewer)
+library(arrow)
 ```
 
 To clean the data, I first filtered the data. I `select`ed the variables above. I also `filter`ed based on my critera of only looking at Oregon and since I am interested in looking at food insecurity, I filtered out people who didn't complete the supplemental food security interview. I also filtered out people who only partially completed the survey.
 
 ```{r read select and filter data}
-df <- read.csv("dec20pub.csv") %>% 
+
+df <- read_parquet("dec20pub.parquet") %>%
   select(HUFINAL, HRFS12M1, HRFS30D1, GESTFIPS, HRPOOR, HRNUMHOU, HRHTYPE, 
          GTMETSTA, PEMARITL, PESEX, PEAFEVER, PEEDUCA, PEMLR, PTDTRACE, 
          PRCITSHP, PEMJOT, PEHRUSLT, PRNMCHLD, HRSUPINT, PRTAGE) %>% 
@@ -206,33 +212,22 @@ food_insec_rate_12mo <- clean_df %>%
   mutate(rate = count/sum(count))
 ```
 
-
 ```{r}
-# ggplot(data = food_insec_rate_12mo, 
-#        mapping = aes(x = "", 
-#                      y = freq, 
-#                      fill = food_insec_12mo, 
-#                      label = round(freq, 2))) +
-#   geom_bar(stat = "identity", 
-#            width = 2, 
-#            color = "white") + 
-#   coord_polar("y", start = 0) +
-#   theme_void() + 
-#   geom_label(aes(label = 100*round(freq,4)), position = position_stack(vjust = 0.5)) +
-#   guides(fill = guide_legend(title = "Food Security Status")) + 
-#   labs(title = "Frequency of Food Security Status in Oregon 2020",
-#        subtitle = "What percentage of people struggle to find their next meal?")
+x <- clean_df %>%
+  count(food_insec_12mo, name = "count") %>%
+  mutate(rate = count/sum(count))
+
+ggplot(data = x, 
+       mapping = aes(x = fct_reorder(food_insec_12mo, count, .desc = TRUE), 
+                     y = count, 
+                     label = paste(100*round(rate, 4), "%"))) + 
+  geom_col(fill = "blue") + 
+  geom_label() + 
+  labs(title = "Food Insecurity Rates", 
+       subtitle = "What percentage of respondents struggle to find their next meal?", 
+       x = "Food Security Status", 
+       y = "Count")
 ```
-
-```{r}
-# clean_df %>%
-#   count(food_insec_12mo, name = "count") %>%
-#   mutate(rate = count/sum(count)) %>%
-#     ggplot(mapping = aes(x = fct_reorder(food_insec_12m, rate), y = rate)) +
-#     geom_col()
-
-```
-
 
 From this data, the food insecurity rate in Oregon 2020 was about **9%** Looking at data from [Feeding America](https://map.feedingamerica.org/county/2019/overall), the food insecurity rate in Oregon was 11.5% in 2019. While the two values are close, the discrepancy is likely due to Feeding America reporting results from a model they developed based many years of CPS data. COVID-19 also heavily impacted food insecurity in 2020 and this could be the cause of an increase in food insecurity in 2020.
 
@@ -244,6 +239,38 @@ From this data, the food insecurity rate in Oregon 2020 was about **9%** Looking
 
 ```
 
-```{r}
 
+### Do different races experience more food insecurity?
+```{r}
+race_df <- clean_df %>% 
+  count(race, name = "count") %>% 
+  mutate(rate_percent = 100*(count/sum(count))) %>% 
+  arrange(desc(rate_percent))
+
+race_df %>% 
+  select(race, rate_percent) %>% 
+  print()
 ```
+
+Looking at [data from census.gov for Oregon in 2019](https://www.census.gov/quickfacts/OR), this sample is well selected. The prevalence of each race in this dataset is roughly equivalent to the population estimates.
+
+```{r}
+clean_df %>%
+  filter(food_insec_12mo != "No Response") %>% 
+  mutate(race_lumped = fct_lump(f = race, n = 3)) %>% 
+  group_by(race_lumped, food_insec_12mo) %>%
+  summarize(n = n()) %>%
+  mutate(rate = n/sum(n)) %>% 
+  ggplot(mapping = aes(
+    x = fct_reorder(race_lumped, n, .desc = TRUE), 
+    y = n, 
+    label = paste(100*round(rate,4), "%"))) + 
+  geom_col(fill = "blue") + 
+  geom_label() + 
+  facet_wrap(~food_insec_12mo) + 
+   labs(title = "Food Insecurity Rates by Race", 
+       subtitle = "What percentage of respondents struggle to find their next meal?",
+       x = "Race",
+       y = "Count")
+```
+

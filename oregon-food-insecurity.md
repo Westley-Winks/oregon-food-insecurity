@@ -3,6 +3,15 @@ Food Insecurity in Oregon 2020
 Westley Winks
 11/21/2021
 
+-   [Step 1: Ask](#step-1-ask)
+-   [Step 2: Prepare](#step-2-prepare)
+-   [Step 3: Process](#step-3-process)
+-   [Step 4: Analyze](#step-4-analyze)
+    -   [What was the food insecurity rate in Oregon in
+        2020?](#what-was-the-food-insecurity-rate-in-oregon-in-2020)
+    -   [What types of people are most food
+        insecure?](#what-types-of-people-are-most-food-insecure)
+
 # Step 1: Ask
 
 -   What is the food insecurity rate in Oregon in 2020?
@@ -20,7 +29,7 @@ Where is data coming from?
 
 TODO: further define where the data comes from, how it is collected,
 what is in it, “Where is this data from and what does it cover?”,
-limitations
+limitations, converting from csv to parquet
 
 Factors to be used will include:
 
@@ -60,6 +69,8 @@ more meaningful variable names and definitions.
 ``` r
 library(tidyverse)
 library(janitor)
+library(RColorBrewer)
+library(arrow)
 ```
 
 To clean the data, I first filtered the data. I `select`ed the variables
@@ -69,7 +80,7 @@ people who didn’t complete the supplemental food security interview. I
 also filtered out people who only partially completed the survey.
 
 ``` r
-df <- read.csv("dec20pub.csv") %>% 
+df <- read_parquet("dec20pub.parquet") %>%
   select(HUFINAL, HRFS12M1, HRFS30D1, GESTFIPS, HRPOOR, HRNUMHOU, HRHTYPE, 
          GTMETSTA, PEMARITL, PESEX, PEAFEVER, PEEDUCA, PEMLR, PTDTRACE, 
          PRCITSHP, PEMJOT, PEHRUSLT, PRNMCHLD, HRSUPINT, PRTAGE) %>% 
@@ -205,7 +216,7 @@ glimpse(clean_df)
     ## $ food_insec_12mo     <chr> "Food Secure", "Food Secure", "Food Secure", "Food…
     ## $ food_insec_30d      <chr> "Food Secure", "Food Secure", "Food Secure", "Food…
     ## $ pov_level           <chr> "Above 185% Poverty or Income Not Reported", "Abov…
-    ## $ num_in_house        <int> 1, 2, 2, 4, 4, 4, 4, 2, 2, 2, 2, 2, 2, 1, 3, 3, 3,…
+    ## $ num_in_house        <dbl> 1, 2, 2, 4, 4, 4, 4, 2, 2, 2, 2, 2, 2, 1, 3, 3, 3,…
     ## $ house_type          <chr> "Female Individual", "Single Mother Family", "Sing…
     ## $ met_status          <chr> "Metropolitan", "Metropolitan", "Metropolitan", "M…
     ## $ marital_status      <chr> "Never Married", "Separated", "Younger than 15", "…
@@ -217,7 +228,7 @@ glimpse(clean_df)
     ## $ more_than_one_job   <chr> "1 Job", "More than 1 job", "Unemployed", "1 Job",…
     ## $ hrs_worked_per_week <chr> "50", "63", "Unemployed", "20", "Unemployed", "Une…
     ## $ num_children        <chr> "Children Older than 18", "1", "Children Older tha…
-    ## $ age                 <int> 63, 44, 12, 75, 79, 50, 31, 76, 72, 46, 21, 62, 55…
+    ## $ age                 <dbl> 63, 44, 12, 75, 79, 50, 31, 76, 72, 46, 21, 62, 55…
     ## $ emp_status          <chr> "Employed", "Employed", "Child or Military", "Empl…
 
 Cleaning summary: - Selected variables of interest - Filtered to keep
@@ -245,29 +256,23 @@ food_insec_rate_12mo <- clean_df %>%
 ```
 
 ``` r
-# ggplot(data = food_insec_rate_12mo, 
-#        mapping = aes(x = "", 
-#                      y = freq, 
-#                      fill = food_insec_12mo, 
-#                      label = round(freq, 2))) +
-#   geom_bar(stat = "identity", 
-#            width = 2, 
-#            color = "white") + 
-#   coord_polar("y", start = 0) +
-#   theme_void() + 
-#   geom_label(aes(label = 100*round(freq,4)), position = position_stack(vjust = 0.5)) +
-#   guides(fill = guide_legend(title = "Food Security Status")) + 
-#   labs(title = "Frequency of Food Security Status in Oregon 2020",
-#        subtitle = "What percentage of people struggle to find their next meal?")
+x <- clean_df %>%
+  count(food_insec_12mo, name = "count") %>%
+  mutate(rate = count/sum(count))
+
+ggplot(data = x, 
+       mapping = aes(x = fct_reorder(food_insec_12mo, count, .desc = TRUE), 
+                     y = count, 
+                     label = paste(100*round(rate, 4), "%"))) + 
+  geom_col(fill = "blue") + 
+  geom_label() + 
+  labs(title = "Food Insecurity Rates", 
+       subtitle = "What percentage of respondents struggle to find their next meal?", 
+       x = "Food Security Status", 
+       y = "Count")
 ```
 
-``` r
-# clean_df %>%
-#   count(food_insec_12mo, name = "count") %>%
-#   mutate(rate = count/sum(count)) %>%
-#     ggplot(mapping = aes(x = fct_reorder(food_insec_12m, rate), y = rate)) +
-#     geom_col()
-```
+![](oregon-food-insecurity_files/figure-gfm/unnamed-chunk-2-1.png)<!-- -->
 
 From this data, the food insecurity rate in Oregon 2020 was about **9%**
 Looking at data from [Feeding
@@ -281,3 +286,61 @@ the cause of an increase in food insecurity in 2020.
 ## What types of people are most food insecure?
 
 ### How much do food insecure people work?
+
+### Do different races experience more food insecurity?
+
+``` r
+race_df <- clean_df %>% 
+  count(race, name = "count") %>% 
+  mutate(rate_percent = 100*(count/sum(count))) %>% 
+  arrange(desc(rate_percent))
+
+race_df %>% 
+  select(race, rate_percent) %>% 
+  print()
+```
+
+    ## # A tibble: 12 × 2
+    ##    race                                 rate_percent
+    ##    <chr>                                       <dbl>
+    ##  1 White Only                                87.4   
+    ##  2 Asian Only                                 3.56  
+    ##  3 Black Only                                 1.97  
+    ##  4 White-Asian                                1.78  
+    ##  5 White-AI                                   1.72  
+    ##  6 American Indian, Alaskan Native Only       1.52  
+    ##  7 White-Black                                0.826 
+    ##  8 White-HP                                   0.572 
+    ##  9 Hawaiian/Pacific Islander Only             0.381 
+    ## 10 3 or more races                            0.127 
+    ## 11 AI-Asian                                   0.0635
+    ## 12 Asian-HP                                   0.0635
+
+Looking at [data from census.gov for Oregon in
+2019](https://www.census.gov/quickfacts/OR), this sample is well
+selected. The prevalence of each race in this dataset is roughly
+equivalent to the population estimates.
+
+``` r
+clean_df %>%
+  filter(food_insec_12mo != "No Response") %>% 
+  mutate(race_lumped = fct_lump(f = race, n = 3)) %>% 
+  group_by(race_lumped, food_insec_12mo) %>%
+  summarize(n = n()) %>%
+  mutate(rate = n/sum(n)) %>% 
+  ggplot(mapping = aes(
+    x = fct_reorder(race_lumped, n, .desc = TRUE), 
+    y = n, 
+    label = paste(100*round(rate,4), "%"))) + 
+  geom_col(fill = "blue") + 
+  geom_label() + 
+  facet_wrap(~food_insec_12mo) + 
+   labs(title = "Food Insecurity Rates by Race", 
+       subtitle = "What percentage of respondents struggle to find their next meal?",
+       x = "Race",
+       y = "Count")
+```
+
+    ## `summarise()` has grouped output by 'race_lumped'. You can override using the `.groups` argument.
+
+![](oregon-food-insecurity_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
