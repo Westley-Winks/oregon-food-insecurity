@@ -7,6 +7,18 @@ output:
   github_document:
     toc: true
     toc_depth: 3
+  html_document:
+    default
+knit: (function(input, ...) {
+    rmarkdown::render(
+      input,
+      output_format = "all", 
+      output_file = c("README.md", paste0(
+        xfun::sans_ext(input), '.html'
+      )),
+      clean = TRUE
+    )
+  })
 ---
 Note: This project is serving two purposes. First, it is a personal project that I have been interested in that will support my portfolio for the work that I want to do. Second, this is my chosen capstone project for a Google Data Analytics course I am taking.
 
@@ -288,3 +300,7 @@ Coming soon (conclusions, answers, etc.)
 
 # Act
 Coming soon (recommendations for businesses and non-profits operating in this space)
+
+```{r}
+```
+

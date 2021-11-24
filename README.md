@@ -328,7 +328,7 @@ ggplot(data = x,
        y = "Count")
 ```
 
-![](oregon-food-insecurity_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
+![](README_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
 
 From this data, the food insecurity rate in Oregon 2020 was about **9%**
 Looking at data from [Feeding
@@ -397,7 +397,7 @@ clean_df %>%
        y = "Count")
 ```
 
-![](oregon-food-insecurity_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
+![](README_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
 
 ### More analysis
 
