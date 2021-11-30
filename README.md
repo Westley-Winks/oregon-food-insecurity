@@ -345,21 +345,59 @@ results from a model they developed based many years of CPS data.
 ``` r
 clean_df %>% 
   filter(food_insec_12mo != "No Response") %>% 
-  group_by(more_than_one_job, food_insec_12mo) %>% 
+  group_by(emp_status, more_than_one_job, food_insec_12mo) %>% 
   summarize(n = n()) %>% 
   mutate(rate = n/sum(n)) %>% 
   filter(food_insec_12mo == "Food Insecure") %>% 
   ggplot(mapping = aes(
-    x = fct_reorder(more_than_one_job, n, .desc = TRUE),
-    y = n, 
-    label = paste(100 * round(rate, 4), "%", "|", n))) + 
-  geom_col(fill = "blue") + 
-  geom_label() 
+    x = fct_reorder2(emp_status, n, rate, .desc = TRUE),
+    y = rate, 
+    label = paste(100 * round(rate, 4), "%", "|", n), 
+    fill = more_than_one_job)) + 
+  geom_col() + 
+  geom_label(position = position_stack()) + 
+  labs(title = "Employment Status and Food Insecurity", 
+       x = "Employment Status", 
+       y = "Food Insecurity Rate", 
+       legend = "How many jobs?")
 ```
 
-    ## `summarise()` has grouped output by 'more_than_one_job'. You can override using the `.groups` argument.
+    ## `summarise()` has grouped output by 'emp_status', 'more_than_one_job'. You can override using the `.groups` argument.
 
-![](README_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
+![](README_files/figure-gfm/employment%20status-1.png)<!-- -->
+
+As expected, those who are unemployed have a higher rate of food
+insecurity while those who are employed have the lowest. The food
+insecurity rate is over 3 times as high for those who are unemployed
+compared to employed. Note that the count is relatively low for the
+unemployed people and so more **work needs to be done to determine if it
+is statistically significant**. Children and military have almost double
+the rate of food insecurity as employed people while those who are out
+of the workforce (retired, disabled, etc.) have a similar food
+insecurity rate as employed people.
+
+``` r
+clean_df %>% 
+  filter(food_insec_12mo != "No Response", more_than_one_job != "Unemployed") %>% 
+  mutate(hours_worked_week = case_when(
+    hrs_worked_per_week != "Varies" ~ as.numeric(hrs_worked_per_week),
+    TRUE ~ 0 # if their response was "Varies", treat as zero
+  )) %>% 
+  ggplot(mapping = aes(
+    x = hours_worked_week
+  )) + 
+  geom_histogram(binwidth = 5, center = 0, fill = "blue") + 
+  labs(title = "How many hours do you work each week?", 
+       subtitle = "Of those who are food insecure, how many hours do they work?", 
+       x = "Hours Worked Per Week", 
+       y = "Count")
+```
+
+![](README_files/figure-gfm/hours%20per%20week-1.png)<!-- -->
+
+Again, as expected, most people work 40 hours per week. What is more
+surprising is that there are people out there working 50-80 hours per
+week that are still food insecure.
 
 ### Do different races experience more food insecurity?
 
@@ -418,7 +456,7 @@ clean_df %>%
 
     ## `summarise()` has grouped output by 'race_lumped'. You can override using the `.groups` argument.
 
-![](README_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+![](README_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
 
 ``` r
   # theme(axis.text.x = element_text(angle = 45, hjust = 1))
@@ -435,6 +473,14 @@ who reported their race as white.
 ### More analysis
 
 Coming soon
+
+``` r
+x <- clean_df %>% 
+  filter(food_insec_12mo == "Food Insecure") %>%
+  select(met_status) %>%
+  group_by(across()) %>% 
+  summarize(n = n())
+```
 
 # Share
 
