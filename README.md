@@ -19,6 +19,7 @@ Westley Winks
         -   [More analysis](#more-analysis)
 -   [Share](#share)
 -   [Act](#act)
+    -   [Further Exploration](#further-exploration)
 
 Note: This project is serving two purposes. First, it is a personal
 project that I have been interested in that will support my portfolio
@@ -341,7 +342,24 @@ results from a model they developed based many years of CPS data.
 
 ### How much do food insecure people work?
 
-Coming soon
+``` r
+clean_df %>% 
+  filter(food_insec_12mo != "No Response") %>% 
+  group_by(more_than_one_job, food_insec_12mo) %>% 
+  summarize(n = n()) %>% 
+  mutate(rate = n/sum(n)) %>% 
+  filter(food_insec_12mo == "Food Insecure") %>% 
+  ggplot(mapping = aes(
+    x = fct_reorder(more_than_one_job, n, .desc = TRUE),
+    y = n, 
+    label = paste(100 * round(rate, 4), "%", "|", n))) + 
+  geom_col(fill = "blue") + 
+  geom_label() 
+```
+
+    ## `summarise()` has grouped output by 'more_than_one_job'. You can override using the `.groups` argument.
+
+![](README_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
 
 ### Do different races experience more food insecurity?
 
@@ -378,26 +396,41 @@ selected. The prevalence of each race in this dataset is roughly
 equivalent to the population estimates.
 
 ``` r
-clean_df %>%
-  filter(food_insec_12mo != "No Response") %>% 
-  mutate(race_lumped = fct_lump(f = race, n = 3)) %>% 
-  group_by(race_lumped, food_insec_12mo) %>%
-  summarize(n = n()) %>%
+clean_df %>% 
+  filter(food_insec_12mo != "No Response") %>%
+  mutate(race_lumped = fct_lump_min(f = race, min = 25)) %>% 
+  group_by(race_lumped, food_insec_12mo) %>% 
+  summarize(n = n()) %>% 
   mutate(rate = n/sum(n)) %>% 
+  filter(food_insec_12mo == "Food Insecure") %>% # 
   ggplot(mapping = aes(
-    x = fct_reorder(race_lumped, n, .desc = TRUE), 
-    y = n, 
-    label = paste(100*round(rate,4), "%"))) + 
+    x = fct_reorder(race_lumped, n, .desc = TRUE),
+    y  = n,
+    label = paste(100 * round(rate, 4), "%", "|", n))) + 
+    # label = ifelse(food_insec_12mo ==  "Food Insecure", paste(100 * round(rate, 4), "%", "|", n), NA))) + 
   geom_col(fill = "blue") + 
   geom_label() + 
-  facet_wrap(~food_insec_12mo) + 
-   labs(title = "Food Insecurity Rates by Race", 
-       subtitle = "What percentage of respondents struggle to find their next meal?",
-       x = "Race",
-       y = "Count")
+  labs(title = "Food Insecurity Rates by Race", 
+       subtitle = "Of each race, what percentage struggle to find their next meal?", 
+       x = "Race", 
+       y = "Number of Responsdents") 
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
+    ## `summarise()` has grouped output by 'race_lumped'. You can override using the `.groups` argument.
+
+![](README_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+
+``` r
+  # theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+At first glance, it can look like non-white people experience food
+insecurity at wildly different rates than white people. However, as
+indicated by the second number in the labels, the count of respondents
+is low for non-white races. **More work needs done here** to determine
+if there is statistical significance (*χ*<sup>2</sup> test or similar)
+in these results due to the low number of respondents compared to those
+who reported their race as white.
 
 ### More analysis
 
@@ -411,3 +444,10 @@ Coming soon (conclusions, answers, etc.)
 
 Coming soon (recommendations for businesses and non-profits operating in
 this space)
+
+## Further Exploration
+
+-   Check for statistical significance where count is relatively low  
+-   Use more variables/factors from the dataset  
+-   Compare results and identify trends across time using the same data
+    source
