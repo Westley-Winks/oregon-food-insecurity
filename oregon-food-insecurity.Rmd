@@ -15,9 +15,7 @@ knit: (function(input, ...) {
     rmarkdown::render(
       input,
       output_format = "all", 
-      output_file = c("README.md", paste0(
-        xfun::sans_ext(input), '.html'
-      )),
+      output_file = c("README.md", "index.html"),
       clean = TRUE
     )
   })
