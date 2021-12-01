@@ -2,13 +2,15 @@
 title: "Food Insecurity in Oregon 2020"
 subtitle: "A case study in factors that affect food insecurity"
 author: "Westley Winks"
-date: "11/21/2021"
+date: "11/30/2021"
 output:
   github_document:
     toc: true
     toc_depth: 3
   html_document:
-    default
+    code_folding: hide
+    toc: true
+    toc_depth: 3
 knit: (function(input, ...) {
     rmarkdown::render(
       input,

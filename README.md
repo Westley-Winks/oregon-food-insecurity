@@ -549,7 +549,8 @@ respondents):
 - Unemployed people have higher food insecurity rates
 
 And with a much higher certainty:  
-- Single mother households have much higher food insecurity rates  
+- The food insecurity rate for all of Oregon in 2020 was about 9% -
+Single mother households have much higher food insecurity rates  
 - Households with 5 or more people have higher food insecurity rates
 
 # Act
