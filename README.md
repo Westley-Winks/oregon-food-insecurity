@@ -16,6 +16,11 @@ Westley Winks
             work?](#how-much-do-food-insecure-people-work)
         -   [Do different races experience more food
             insecurity?](#do-different-races-experience-more-food-insecurity)
+        -   [What types of households (single mother, single father,
+            etc.) experience more food
+            insecurity?](#what-types-of-households-single-mother-single-father-etc-experience-more-food-insecurity)
+        -   [How large are food insecure
+            households?](#how-large-are-food-insecure-households)
         -   [More analysis](#more-analysis)
 -   [Share](#share)
 -   [Act](#act)
@@ -56,7 +61,6 @@ Samaritans.
 As a basis for the project, I am attempting to answer the following:  
 - What is the food insecurity rate in Oregon in 2020?  
 - What types of households are most food insecure in Oregon?  
-- Where are food insecure people in Oregon?  
 - What is a general profile for a food insecure person in Oregon?
 
 # Prepare
@@ -89,7 +93,7 @@ look at certain factors that I think will be the most interesting.
 -   GTMETSTA = Metro status
 -   PEMARITL = Marital status
 -   PESEX = Sex (non-binary not represented)
--   PEAFEVER = Did you serve active duty? (1 is yes, 2 is no)
+-   PEAFEVER = Did you serve active duty?
 -   PEEDUCA = Highest level of school completed
 -   PTDTRACE = Race
 -   PRCITSHP = Citizenship status
@@ -359,10 +363,8 @@ clean_df %>%
   labs(title = "Employment Status and Food Insecurity", 
        x = "Employment Status", 
        y = "Food Insecurity Rate", 
-       legend = "How many jobs?")
+       fill = "How many jobs?")
 ```
-
-    ## `summarise()` has grouped output by 'emp_status', 'more_than_one_job'. You can override using the `.groups` argument.
 
 ![](README_files/figure-gfm/employment%20status-1.png)<!-- -->
 
@@ -378,7 +380,7 @@ insecurity rate as employed people.
 
 ``` r
 clean_df %>% 
-  filter(food_insec_12mo != "No Response", more_than_one_job != "Unemployed") %>% 
+  filter(food_insec_12mo == "Food Insecure", more_than_one_job != "Unemployed") %>% 
   mutate(hours_worked_week = case_when(
     hrs_worked_per_week != "Varies" ~ as.numeric(hrs_worked_per_week),
     TRUE ~ 0 # if their response was "Varies", treat as zero
@@ -397,7 +399,8 @@ clean_df %>%
 
 Again, as expected, most people work 40 hours per week. What is more
 surprising is that there are people out there working 50-80 hours per
-week that are still food insecure.
+week that are still food insecure. 0 here represents respondents who
+answered “Varies”.
 
 ### Do different races experience more food insecurity?
 
@@ -442,19 +445,17 @@ clean_df %>%
   mutate(rate = n/sum(n)) %>% 
   filter(food_insec_12mo == "Food Insecure") %>% # 
   ggplot(mapping = aes(
-    x = fct_reorder(race_lumped, n, .desc = TRUE),
-    y  = n,
-    label = paste(100 * round(rate, 4), "%", "|", n))) + 
-    # label = ifelse(food_insec_12mo ==  "Food Insecure", paste(100 * round(rate, 4), "%", "|", n), NA))) + 
+    x = fct_reorder(race_lumped, rate, .desc = TRUE),
+    y  = rate,
+    label = paste(100 * round(rate, 4), "%", "|", n)
+    )) + 
   geom_col(fill = "blue") + 
   geom_label() + 
   labs(title = "Food Insecurity Rates by Race", 
        subtitle = "Of each race, what percentage struggle to find their next meal?", 
        x = "Race", 
-       y = "Number of Responsdents") 
+       y = "Food Insecurity Rate") 
 ```
-
-    ## `summarise()` has grouped output by 'race_lumped'. You can override using the `.groups` argument.
 
 ![](README_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
 
@@ -462,7 +463,7 @@ clean_df %>%
   # theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-At first glance, it can look like non-white people experience food
+At first glance, it looks like non-white people experience food
 insecurity at wildly different rates than white people. However, as
 indicated by the second number in the labels, the count of respondents
 is low for non-white races. **More work needs done here** to determine
@@ -470,30 +471,102 @@ if there is statistical significance (*χ*<sup>2</sup> test or similar)
 in these results due to the low number of respondents compared to those
 who reported their race as white.
 
-### More analysis
-
-Coming soon
+### What types of households (single mother, single father, etc.) experience more food insecurity?
 
 ``` r
-x <- clean_df %>% 
-  filter(food_insec_12mo == "Food Insecure") %>%
-  select(met_status) %>%
-  group_by(across()) %>% 
-  summarize(n = n())
+clean_df %>% 
+  filter(food_insec_12mo != "No Response") %>% 
+  group_by(house_type, food_insec_12mo) %>%
+  summarize(n = n()) %>% 
+  mutate(rate = n/sum(n)) %>% 
+  filter(food_insec_12mo == "Food Insecure") %>% 
+  ggplot(mapping = aes(
+    x = fct_reorder(house_type, rate, .desc = TRUE), 
+    y = rate,
+    label = paste(100 * round(rate, 4), "%", "|", n)
+  )) + 
+  geom_col(fill = "blue") + 
+  geom_label() + 
+  labs(title = "Food Insecurity by Household Type", 
+       subtitle = "Single mothers have the highest rate of food insecurity", 
+       x = "Household Type", 
+       y = "Food Insecurity Rate") + 
+  theme(axis.text.x = element_text(angle = 20, hjust = 1))
 ```
+
+![](README_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+
+From this, it is clear that single mother families have the highest rate
+of food insecurity, nearly 4 times the rate of a traditional
+husband/wife family and over twice the average Oregon food insecurity
+rate.
+
+### How large are food insecure households?
+
+``` r
+clean_df %>% 
+  filter(food_insec_12mo != "No Response") %>% 
+  group_by(num_in_house, food_insec_12mo) %>% 
+  summarize(n = n()) %>% 
+  mutate(rate = n/sum(n)) %>% 
+  filter(food_insec_12mo == "Food Insecure") %>%
+  ggplot(mapping = aes(
+    x = num_in_house,
+    y = rate,
+    label = paste("n=", n)
+  )) +
+  geom_line() +
+  geom_point() + 
+  geom_text(position = position_nudge(x = 0, y = 0.05)) + 
+  labs(title = "Food Insecurity by Household Size", 
+       subtitle = "Larger houses have higher rates of food insecurity", 
+       x = "Household Size", 
+       y = "Food Insecurity  Rate")
+```
+
+![](README_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+
+Here we see that up until the household size is about 5, the food
+insecurity rate is relatively constant. Then as the household size
+increases, so does food insecurity rate. It is important to note that
+there is no data for households of size 8 or 9. **More data is needed to
+more confidently say that larger households have higher food insecurity
+rates**.
+
+### More analysis
+
+So far, we have looked at race, household type, household size, and
+employment status but the surface has just been scratched. Over time, I
+will add complexity and factors to this analysis to get a better picture
+of food insecurity in Oregon.
 
 # Share
 
-Coming soon (conclusions, answers, etc.)
+From the analysis step, here is what we found out:  
+With **significant uncertainty** (again, there are low numbers of some
+respondents):  
+- Non-white races have higher food insecurity rates  
+- Unemployed people have higher food insecurity rates
+
+And with a much higher certainty:  
+- Single mother households have much higher food insecurity rates  
+- Households with 5 or more people have higher food insecurity rates
 
 # Act
 
-Coming soon (recommendations for businesses and non-profits operating in
-this space)
+Recommendations for food security non-profits in Oregon:  
+1. Seek out single mothers Single mothers in Oregon have much higher
+food insecurity rates than the rest of the population. Reach out to
+local support groups and put up flyers letting them know where to find
+food.  
+2. Partner with schools Large households (5 or more) have higher food
+insecurity rates. These larger households are likely to have children in
+school. Partner with these local schools to raise awareness that there
+is help in the area.
 
 ## Further Exploration
 
 -   Check for statistical significance where count is relatively low  
 -   Use more variables/factors from the dataset  
 -   Compare results and identify trends across time using the same data
-    source
+    source but from different years
